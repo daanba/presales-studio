@@ -1,0 +1,50 @@
+[
+  {
+    "vendor": "Fortinet",
+    "legacy": "FortiGate 30E / 30F",
+    "target": "FortiGate 30G / 50G",
+    "confidence": "UNVERIFIED CANDIDATE",
+    "checks": "Sizing, interfaces, feature and lifecycle validation",
+    "source": "https://www.fortinet.com/products/next-generation-firewall"
+  },
+  {
+    "vendor": "Fortinet",
+    "legacy": "FortiGate 40F / 60F",
+    "target": "FortiGate 70G / 90G",
+    "confidence": "UNVERIFIED CANDIDATE",
+    "checks": "Threat profile, ports, FortiOS compatibility",
+    "source": "https://www.fortinet.com/products/next-generation-firewall"
+  },
+  {
+    "vendor": "Fortinet",
+    "legacy": "FortiGate 70F / 80F",
+    "target": "FortiGate 90G / 120G",
+    "confidence": "UNVERIFIED CANDIDATE",
+    "checks": "Security benchmark, HA and port speed",
+    "source": "https://www.fortinet.com/products/next-generation-firewall"
+  },
+  {
+    "vendor": "Fortinet",
+    "legacy": "FortiGate 100E / 100F",
+    "target": "FortiGate 120G / 200G",
+    "confidence": "UNVERIFIED CANDIDATE",
+    "checks": "Throughput, VPN, sessions, subscriptions",
+    "source": "https://www.fortinet.com/products/next-generation-firewall"
+  },
+  {
+    "vendor": "Fortinet",
+    "legacy": "FortiGate 200E / 200F",
+    "target": "FortiGate 200G / 400G",
+    "confidence": "UNVERIFIED CANDIDATE",
+    "checks": "Inspect feature equivalence and EoS",
+    "source": "https://www.fortinet.com/products/next-generation-firewall"
+  },
+  {
+    "vendor": "Fortinet",
+    "legacy": "FortiGate 600E / 600F",
+    "target": "FortiGate 700G / 900G",
+    "confidence": "UNVERIFIED CANDIDATE",
+    "checks": "Full new solution architecture assessment",
+    "source": "https://www.fortinet.com/products/next-generation-firewall"
+  }
+]
