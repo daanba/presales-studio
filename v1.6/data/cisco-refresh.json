@@ -1,0 +1,50 @@
+[
+  {
+    "vendor": "Cisco",
+    "legacy": "Catalyst 2960-X / XR",
+    "target": "Catalyst 9200 family",
+    "confidence": "DOCUMENTED FAMILY DIRECTION",
+    "checks": "Ports, PoE, stacking, license, uplinks",
+    "source": "https://www.cisco.com/c/en/us/products/collateral/switches/catalyst-9000/nb-06-cat-9k-aag-cte-en.html"
+  },
+  {
+    "vendor": "Cisco",
+    "legacy": "Catalyst 3650 / 3850",
+    "target": "Catalyst 9300 family",
+    "confidence": "DOCUMENTED FAMILY DIRECTION",
+    "checks": "IOS XE, uplink, features, PoE and stack",
+    "source": "https://www.cisco.com/c/en/us/products/collateral/switches/catalyst-9000/nb-06-cat-9k-aag-cte-en.html"
+  },
+  {
+    "vendor": "Cisco",
+    "legacy": "Catalyst 4500-E",
+    "target": "Catalyst 9400 family",
+    "confidence": "DOCUMENTED FAMILY DIRECTION",
+    "checks": "Supervisor / chassis / line card feature parity",
+    "source": "https://www.cisco.com/c/en/us/products/collateral/switches/catalyst-9000/nb-06-cat-9k-aag-cte-en.html"
+  },
+  {
+    "vendor": "Cisco",
+    "legacy": "Catalyst 4500-X",
+    "target": "Catalyst 9500 family",
+    "confidence": "DOCUMENTED FAMILY DIRECTION",
+    "checks": "Core feature parity and optics",
+    "source": "https://www.cisco.com/c/en/us/products/collateral/switches/catalyst-9000/nb-06-cat-9k-aag-cte-en.html"
+  },
+  {
+    "vendor": "Cisco",
+    "legacy": "Catalyst 6500 / 6800",
+    "target": "Catalyst 9600 family",
+    "confidence": "ARCHITECTURAL CANDIDATE",
+    "checks": "Complete design validation required",
+    "source": "https://www.cisco.com/c/en/us/products/collateral/switches/catalyst-9000/nb-06-cat-9k-aag-cte-en.html"
+  },
+  {
+    "vendor": "Cisco",
+    "legacy": "ASA 5500-X",
+    "target": "Current Cisco Secure Firewall portfolio",
+    "confidence": "SIZING REQUIRED",
+    "checks": "Platform/FTD migration, VPN, licences, exact SKU",
+    "source": "https://www.cisco.com/c/en/us/products/security/firewalls/firewall-migration.html"
+  }
+]
