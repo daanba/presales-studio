@@ -11,6 +11,7 @@ const refs={
  Fortinet:"https://www.fortinet.com/products"
 };
 let staged=[], vendor="Cisco", currentGroup="ciscoPortfolio", arrival="";
+let refreshVendor="All", lastOldMode="legacy", lastOldValue="", lastNewValue="";
 const safe=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function getRecords(data){
  if(Array.isArray(data))return data;
@@ -53,16 +54,63 @@ function panel(){
  <div class="notice"><b>Sigurnosno pravilo:</b> novi i izmijenjeni uređaji su samo prijedlog; nijedna postojeća metrika se ne prepisuje bez tvog izbora. Nije službeni vendor API. Službeni datasheet, metodologija i double-check obavezni.</div>
  <div id="syncPreview" aria-live="polite"></div>
  <hr><h3>⇄ Guided Technology Refresh — kandidat, NE automatska 1:1 zamjena</h3>
- <p>Koraci: 1) evidentiraj stari model, 2) izaberi novi model, 3) pregledaj interfejse, portove, licence, NGFW/TLS/HA i lifecycle, 4) provjeri migraciju konfiguracije i rollback, 5) zatraži Vendor SE double-check, 6) dodaj kandidat-mapiranje u Refresh editor.</p>
- <div style="display:flex;flex-wrap:wrap;gap:10px">
- <label>Stara oprema <input class="input" id="replaceOld" placeholder="npr. FortiGate 60F"></label>
- <label>Novi model <select id="replaceNew" class="input"></select></label>
- <button class="btn" id="replacementPreview">Predloži refresh</button></div>
+ <p><b>Stara oprema</b> može biti iz postojećeg portfolija, historijskih refresh zapisa ili slobodno unesena (stariji model koji još nije u katalogu). <b>Novi kandidat</b> može biti Cisco ili Fortinet; promjena proizvođača je moguća, ali zahtijeva posebno strogu validaciju funkcija, licenci i migracije.</p>
+ <div class="notice">Redoslijed: 1) izaberi vendor kandidata ili SVI, 2) odaberi izvor starog modela, 3) izaberi stari model ili unesi naziv, 4) odaberi novi model, 5) provjeri razlike i Vendor SE double-check, 6) dodaj kandidat-mapiranje u refresh editor i izvezi JSON.</div>
+ <div class="admin-form">
+ <label>Proizvođač kandidata <select id="refreshVendorChoice" class="input"><option value="All">Cisco + Fortinet</option><option>Cisco</option><option>Fortinet</option></select></label>
+ <label>Odakle je stara oprema?
+ <select id="replaceOldMode" class="input">
+ <option value="legacy">Historijski refresh / legacy zapis</option>
+ <option value="portfolio">Postojeći model u portfoliju</option>
+ <option value="manual">Ručno — nije u katalogu</option>
+ </select></label>
+ <label id="replaceOldSelectWrap">Stara oprema <select id="replaceOldSelect" class="input"></select></label>
+ <label id="replaceOldManualWrap" style="display:none">Stara oprema (slobodan unos) <input id="replaceOld" class="input" placeholder="npr. FortiGate 60E / Cisco ASA 5516-X"></label>
+ <label>Novi model / kandidat <select id="replaceNew" class="input"></select></label>
+ </div>
+ <button class="btn" id="replacementPreview">⇄ Predloži refresh i provjere</button>
  <div id="replaceResult"></div>`;
  target.insertAdjacentElement("afterend",box);
  document.getElementById("syncVendor").value=vendor;
- const modelSelect=document.getElementById("replaceNew");
- modelSelect.innerHTML=working[groupKey()].map(x=>`<option value="${safe(x.id)}">${safe(x.name)}</option>`).join("");
+ refreshControls();
+
+}
+function refreshControls(){
+ const pick=document.getElementById("refreshVendorChoice");
+ if(!pick)return;
+ pick.value=refreshVendor;
+ const oldMode=document.getElementById("replaceOldMode");
+ oldMode.value=lastOldMode;
+ const manual=document.getElementById("replaceOldManualWrap"),selectWrap=document.getElementById("replaceOldSelectWrap");
+ manual.style.display=lastOldMode==="manual"?"":"none";
+ selectWrap.style.display=lastOldMode==="manual"?"none":"";
+ const oldSelect=document.getElementById("replaceOldSelect");
+ const raw=lastOldMode==="legacy"
+  ?[...working.ciscoRefresh,...working.fortinetRefresh].map(x=>({name:x.legacy,vendor:x.vendor}))
+  :[...working.ciscoPortfolio,...working.fortinetPortfolio].map(x=>({name:x.name,vendor:x.vendor}));
+ const uniq=new Map();
+ raw.forEach(x=>{const key=x.vendor+"|"+x.name;if(x.name&&!uniq.has(key))uniq.set(key,x)});
+ oldSelect.innerHTML='<option value="">— Odaberi stari model —</option>'+
+ [...uniq.values()].map(x=>`<option value="${safe(x.vendor+"|"+x.name)}">${safe(x.vendor+" — "+x.name)}</option>`).join("");
+ if([...oldSelect.options].some(x=>x.value===lastOldValue))oldSelect.value=lastOldValue;
+ const target=document.getElementById("replaceNew");
+ const models=[...working.ciscoPortfolio,...working.fortinetPortfolio].filter(x=>refreshVendor==="All"||x.vendor===refreshVendor);
+ target.innerHTML='<option value="">— Odaberi novi model —</option>'+
+ models.map(x=>`<option value="${safe(x.vendor+"|"+x.id)}">${safe(x.vendor+" — "+x.name)}</option>`).join("");
+ if([...target.options].some(x=>x.value===lastNewValue))target.value=lastNewValue;
+}
+function chosenOld(){
+ const mode=document.getElementById("replaceOldMode").value;
+ if(mode==="manual")return {name:document.getElementById("replaceOld").value.trim(),vendor:""};
+ const v=document.getElementById("replaceOldSelect").value;
+ const bar=v.indexOf("|");return {vendor:bar>=0?v.slice(0,bar):"",name:bar>=0?v.slice(bar+1):""};
+}
+function chosenNew(){
+ const value=document.getElementById("replaceNew").value;
+ if(!value)return null;
+ const idx=value.indexOf("|"),vend=value.slice(0,idx),id=value.slice(idx+1);
+ const group=vend==="Cisco"?"ciscoPortfolio":"fortinetPortfolio";
+ return working[group].find(r=>r.id===id&&r.vendor===vend)||null;
 }
 function groupKey(){return vendor==="Cisco"?"ciscoPortfolio":"fortinetPortfolio"}
 function preview(){
@@ -121,12 +169,12 @@ document.addEventListener("click",async e=>{
  if(id==="officialCisco"||id==="officialFortinet"){window.open(refs[id==="officialCisco"?"Cisco":"Fortinet"],"_blank","noopener,noreferrer");return}
  if(id==="templateSync"){template();return}
  if(id==="replacementPreview"){
-  const old=document.getElementById("replaceOld").value.trim(),idNew=document.getElementById("replaceNew").value;
-  const target=working[groupKey()].find(r=>r.id===idNew);
-  if(!old||!target){alert("Odaberi stari i novi model.");return}
-  const msg=`KANDIDAT – NIJE 1:1. Provjeri funkcionalni parity: ${target.category||"?"}; portove i module (${target.interfaces||"nepoznato"}); FPS/NGFW/TLS prema opterećenju; VPN, routing, HA, verziju FW i politike; migracijski alat, konfiguraciju i rollback; licence, support, EoL, regionalnu dostupnost. Izvor: ${target.source}`;
-  document.getElementById("replaceResult").innerHTML=`<div class="notice"><b>${safe(old)} → ${safe(target.name)}</b><p>${safe(msg)}</p><button id="addRefreshCandidate" class="btn primary">＋ Dodaj kandidat u Refresh editor</button></div>`;
-  window._replacementCandidate={vendor,legacy:old,target:target.name,confidence:"KANDIDAT – NIJE 1:1",checks:msg,source:target.source};
+  const old=chosenOld(),target=chosenNew();
+  if(!old.name||!target){alert("Izaberi ili unesi staru opremu i odaberi novi model.");return}
+  const crossVendor=old.vendor&&old.vendor!==target.vendor;
+  const msg=`KANDIDAT – NIJE POTVRĐENA 1:1 ZAMJENA. ${crossVendor?"CROSS-VENDOR MIGRACIJA: obavezno provjeriti policy/routing/VPN ekvivalenciju, licence, migraciju konfiguracije i support. ":""}Provjeri funkcionalni parity: ${target.category||"?"}; portove i module (${target.interfaces||"nepoznato"}); kapacitet FW/NGFW/TLS prema opterećenju; VPN, routing, HA, verziju firmwarea i politike; migraciju i rollback; licence, support, lifecycle i regionalnu dostupnost. Izvor: ${target.source||"NIJE DOSTUPAN"}`;
+  document.getElementById("replaceResult").innerHTML=`<div class="notice"><b>${safe((old.vendor?old.vendor+" — ":"")+old.name)} → ${safe(target.vendor+" — "+target.name)}</b><p>${safe(msg)}</p><p><b>DOUBLE-CHECK:</b> službeni datasheeti starog i novog modela, kombinovani sigurnosni profil, portovi, transceiveri, podrška, EoL/EoS, licence, HA i migracija; Vendor SE / Solution Architect treba odobriti prije ponude.</p><button id="addRefreshCandidate" class="btn primary">＋ Dodaj kandidat u ${safe(target.vendor)} Refresh editor</button></div>`;
+  window._replacementCandidate={vendor:target.vendor,legacy:old.name,target:target.name,confidence:"KANDIDAT – NIJE 1:1",checks:msg,source:target.source||"https://www.cisco.com/"};
   return;
  }
  if(id==="addRefreshCandidate"){
@@ -147,6 +195,10 @@ document.addEventListener("click",async e=>{
   }catch(err){alert("Povlačenje nije uspjelo: "+err.message+". Koristi službeni katalog i lokalno pripremljen JSON predložak.")}return}
 });
 document.addEventListener("change",async e=>{
+ if(e.target.id==="refreshVendorChoice"){refreshVendor=e.target.value;lastNewValue="";refreshControls();document.getElementById("replaceResult").innerHTML="";}
+ if(e.target.id==="replaceOldMode"){lastOldMode=e.target.value;lastOldValue="";refreshControls();document.getElementById("replaceResult").innerHTML="";}
+ if(e.target.id==="replaceOldSelect"){lastOldValue=e.target.value;document.getElementById("replaceResult").innerHTML="";}
+ if(e.target.id==="replaceNew"){lastNewValue=e.target.value;document.getElementById("replaceResult").innerHTML="";}
  if(e.target.id==="syncVendor"){vendor=e.target.value;staged=[];preview()}
  if(e.target.id==="syncFile"){
   try{if(e.target.files[0])await receive(await e.target.files[0].text(),e.target.files[0].name)}

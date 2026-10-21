@@ -16,3 +16,13 @@ Reviewed: 2026-10-21 | Author: DAMIR OMERASEVIC
 ## Engineering boundaries
 
 Static localStorage only; not a server-backed CRM. A change to active project **does not silently rewrite** stored offer versions. A new revision requires an explicit action and reason. Historical version snapshot never constitutes manufacturer approval.
+
+## v1.6.1 — Guided Technology Refresh and Help patch
+
+- Fixed Cisco-only candidate dropdown by sourcing selectable new models from **both** portfolios.
+- Added vendor filter: Cisco + Fortinet / Cisco / Fortinet.
+- Added 3 choices for legacy device: historical refresh, current portfolio, manual unlisted.
+- Explicitly distinguished old inventory confirmation from reference-catalog records.
+- Target-vendor refresh editor receives the candidate record; cross-vendor migration note and double-check added.
+- Updated `How it works` UI, HOW_TO.md and README.
+- Previous version folders v1.1–v1.5 are retained unmodified.

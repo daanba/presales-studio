@@ -4,7 +4,7 @@
 # Copyright (C) 2026 DAMIR OMERASEVIC. All rights reserved.
 # Author : DAMIR OMERASEVIC
 # File : README.md
-# Version : 1.4
+# Version : 1.6.1
 # Status : INDEPENDENT PORTFOLIO DEMO (NOT PRODUCTION CRM)
 # =============================================================================
 -->
@@ -104,3 +104,11 @@ The **Pregled projekta** dashboard now includes a CRM quote selector (RFQ / offe
 A quote revision is **not automatically changed** when a user changes an editable project, avoiding rewriting history. To keep quotes auditable, a user explicitly creates a new revision with reason, status and snapshot.
 
 **DO NOT** use this demo for real client credentials, confidential pricing, personal data or production orders. Human double check of model specifications, licensing, topology and vendor SE approval remains mandatory.
+
+## v1.6.1 Guided Technology Refresh patch
+
+- **Both vendors are now selectable** in the Guided Technology Refresh *candidate model* dropdown, independent of catalogue-sync vendor selection.
+- Old model is selected from **historical legacy refresh records**, **current portfolio** or **manual free text** for older unlisted equipment.
+- Candidate notes distinguish cross-vendor migration from within-vendor refresh; mapping is sent to the target vendor's refresh editor.
+- The built-in **How it works** view and `HOW_TO.md` reflect the linked CRM/quote revisions and corrected refresh workflow.
+- All data changes remain local until export and GitHub commit. Manufacturer/solution architect double-check remains mandatory.
