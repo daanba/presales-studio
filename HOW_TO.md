@@ -107,3 +107,25 @@ Detaljna uputstva su u [README.md](README.md). Workflow `/.github/workflows/depl
 ## G. Ograničenja i etika prezentacije
 
 Ovo je **samostalni portfolio projekat**, ne službeni Comtrade sistem. Svi demo podaci su sintetički. Ne tvrditi da su Cisco/Fortinet potvrdili mape zamjene, da je postavljen vendor API ili da je proizvoda moguće kupiti po prikazanim demo cijenama.
+
+
+## Statusi i automatsko ažuriranje (v1.1)
+
+1. Otvori **Discovery** i izaberi Cisco ili Fortinet.
+2. Upiši **Odgovor kupca** - brojač *odgovoreno* mijenja se odmah.
+3. Postavi status **Potvrđeno** - brojač *potvrđeno* mijenja se odmah.
+4. Upiši **Dokaz / napomena** - tek tada red ulazi u *verifikovano* i raste procenat.
+5. Za **Nije primjenjivo** upiši razlog/obrazloženje u dokaz. Bez obrazloženja se
+   stavka ne smatra verifikovanom.
+6. Otvori **Pregled projekta**. Obje Discovery KPI kartice prikazuju upravo sačuvane
+   rezultate; nije potrebno ručno snimanje.
+7. U **QA Gate** status „Potvrđeno“ je dovoljan samo uz popunjene polja
+   **Owner** i **Dokaz**. KPI brojači se automatski osvježavaju.
+8. U **Capacity Sizing** unosi trenutnog peak prometa i pretpostavki odmah
+   osvježavaju Mbps/Gbps/HA prikaz; u **BOM** cijene i količine odmah osvježavaju
+   sumarne finansijske pokazatelje.
+9. Sve izmjene se automatski spremaju u **localStorage** aktivnog browsera.
+   Za prijenos na drugo računalo koristi **Sačuvaj JSON / Uvezi JSON**.
+
+**NAPOMENA:** status „REVIEW“ znači da su sve QA stavke dokumentovane,
+ali **ne predstavlja formalno tehničko ili komercijalno odobrenje ponude**.

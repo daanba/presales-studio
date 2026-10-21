@@ -9,7 +9,7 @@
  * ============================================================================= */
 "use strict";
 const D=window.PRESALES_DATA;
-const KEY='presales-studio-v1';
+const KEY='presales-studio-v1'; // storage key unchanged to preserve existing DEMO/work data
 const labels={dashboard:'PREGLED PROJEKTA',discovery:'DISCOVERY',sizing:'CAPACITY SIZING',catalog:'PRODUCT PORTFOLIO',refresh:'TECHNOLOGY REFRESH',bom:'BOM & TCO',qa:'QUALITY GATE',guide:'HOW IT WORKS'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>Number(n||0).toLocaleString('bs-BA',{maximumFractionDigits:2});
@@ -22,12 +22,57 @@ function load(){try{let x=JSON.parse(localStorage.getItem(KEY));return x&&x.vers
 let state=load(), view='dashboard', vendor='Cisco',searchTerm='',category='All',refreshVendor='All';
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){toast('Nije moguće sačuvati projekt. Provjeri prostor browsera.')}} 
 function toast(msg){const el=document.querySelector('#toast');el.textContent=msg;el.style.display='block';clearTimeout(window.toastTimeout);window.toastTimeout=setTimeout(()=>{el.style.display='none'},3100)}
-function pctDone(v){let q=D.discovery[v];let obj=state.discovery[v]||{};let done=q.filter((_,i)=>{const x=obj[i];return x&&(x.status==='Potvrđeno'?Boolean((x.answer||'').trim()&&(x.evidence||'').trim()):(x.status==='Nije primjenjivo'?Boolean((x.evidence||'').trim()):false))}).length;return [done,q.length,Math.round(done/q.length*100)]}
+// Independently track answers, declared confirmations and verified completions.
+// 'Potvrđeno' WITHOUT both an answer and supporting evidence is NOT verified.
+function discoveryStats(v){
+  const questions=D.discovery[v], records=state.discovery[v]||{};
+  let answered=0,confirmed=0,verified=0,notApplicable=0,blocked=0;
+  questions.forEach((_,i)=>{
+    const x=records[i]||{},answer=String(x.answer||'').trim(),evidence=String(x.evidence||'').trim();
+    if(answer)answered++;
+    if(x.status==='Potvrđeno'){confirmed++;if(answer&&evidence)verified++;}
+    if(x.status==='Nije primjenjivo'){notApplicable++;if(evidence)verified++;}
+    if(x.status==='Blokirano')blocked++;
+  });
+  return {answered,confirmed,verified,notApplicable,blocked,total:questions.length,
+    percent:questions.length?Math.round(verified/questions.length*100):0};
+}
+function pctDone(v){const q=discoveryStats(v);return [q.verified,q.total,q.percent];}
 function qaStatus(){let ok=0,blocked=0,open=0;D.qa.forEach((_,i)=>{let s=state.qa[i]?.status||'Otvoreno';let r=state.qa[i]||{};if((s==='Potvrđeno'||s==='Nije primjenjivo')&&(r.owner||'').trim()&&(r.evidence||'').trim())ok++;else if(s==='Blokirano')blocked++;else open++});return {ok,blocked,open,total:D.qa.length,ready:ok===D.qa.length&&blocked===0}}
 const stat=(title,number,hint)=>`<div class="card kpi"><div class="label">${title}</div><div class="number">${number}</div><div class="hint">${hint}</div></div>`;
 function ph(title,desc,buttons=''){return `<div class="pagehead"><div><div class="eyebrow">PRESALES STUDIO / ${esc(view.toUpperCase())}</div><h1>${title}</h1><p>${desc}</p></div><div class="btnrow">${buttons}</div></div>`}
 function actions(extra=''){return `<button class="btn" data-action="loadDemo">▶ Učitaj DEMO</button><button class="btn" data-action="export">↓ Sačuvaj JSON</button><button class="btn" data-action="import">↑ Uvezi JSON</button>${extra}`}
-function progress(label,arr){return `<div style="margin:13px 0"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>${label}</strong><span class="subtle">${arr[0]} / ${arr[1]} potvrđeno · ${arr[2]}%</span></div><div class="progressbar"><div style="width:${arr[2]}%"></div></div></div>`}
+function progress(label,arr){return `<div style="margin:13px 0"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>${label}</strong><span class="subtle">${arr[0]} / ${arr[1]} verifikovano · ${arr[2]}%</span></div><div class="progressbar"><div style="width:${arr[2]}%"></div></div></div>`}
+function discoveryProgressHtml(v){
+  const x=discoveryStats(v);
+  return progress(v+' - verifikacija',[x.verified,x.total,x.percent])+
+  `<small class="subtle">${x.answered} odgovoreno · ${x.confirmed} status Potvrđeno · ${x.notApplicable} N/P · ${x.blocked} blokirano</small>`;
+}
+function liveUpdate(){
+  if(view==='discovery'){
+    const el=document.querySelector('[data-live-discovery]');
+    if(el)el.innerHTML=discoveryProgressHtml(vendor);
+  }
+  if(view==='qa'){
+    const el=document.querySelector('[data-live-qa]');
+    const notice=document.querySelector('[data-live-qa-notice]');
+    const q=qaStatus();
+    if(el)el.innerHTML=qaCards(q);
+    if(notice)notice.innerHTML=qaNotice(q);
+    if(notice)notice.className='notice '+(q.ready?'':'danger');
+  }
+  if(view==='bom'){
+    const el=document.querySelector('[data-live-bom]');
+    if(el)el.innerHTML=bomCards();
+  }
+  if(view==='sizing'){
+    const r=computedSizing();
+    const m=document.querySelector('[data-live-mbps]'),g=document.querySelector('[data-live-gbps]'),h=document.querySelector('[data-live-ha]');
+    if(m)m.textContent=r?fmt(r.mbps):'—';
+    if(g)g.textContent=r?fmt(r.gbps):'—';
+    if(h)h.textContent=r?String(r.ha):'—';
+  }
+}
 function renderDashboard(){
 const c=pctDone('Cisco'),f=pctDone('Fortinet'),q=qaStatus();
 return ph('From discovery to decision.','Jedinstven, pregledan presales proces za Cisco & Fortinet — od prvog razgovora s kupcem do tehnički provjerene ponude.',actions())+
@@ -48,8 +93,8 @@ function vswitch(v=vendor){return `<div class="vendor-tabs"><button class="btn $
 function renderDiscovery(){
 const arr=D.discovery[vendor],progressArr=pctDone(vendor),records=state.discovery[vendor]||{};
 return ph('Discovery / '+vendor,'Strukturirani tehnički upitnik. Evidentiraj izvor svake informacije i status potvrde.',`<button class="btn" data-action="csvDiscovery">↓ Izvezi CSV</button>`)+
-`<div class="toolbar"><div class="left">${vswitch()}<span class="badge">${arr.length} pitanja</span></div><div style="min-width:240px">${progress(vendor+' status',progressArr)}</div></div>
-<div class="tablewrap"><table><thead><tr><th>#</th><th>Oblast</th><th>Pitanje / ulazni parametar</th><th>Odgovor kupca</th><th>Status</th><th>Dokaz / napomena</th></tr></thead><tbody>${arr.map((row,i)=>{let r=records[i]||{};return `<tr><td><span class="muted">${String(i+1).padStart(2,'0')}</span></td><td><span class="badge">${esc(row.group)}</span><br><small class="muted">${esc(row.priority)}</small></td><td style="min-width:220px"><b>${esc(row.question)}</b><div class="helper">${esc(row.unit)}</div></td><td><textarea data-discovery="${esc(vendor)}" data-index="${i}" data-field="answer" placeholder="Upiši odgovor...">${esc(r.answer||'')}</textarea></td><td><select data-discovery="${esc(vendor)}" data-index="${i}" data-field="status">${['Otvoreno','Potvrđeno','Nije primjenjivo','Blokirano'].map(x=>`<option ${x===(r.status||'Otvoreno')?'selected':''}>${x}</option>`).join('')}</select></td><td><textarea data-discovery="${esc(vendor)}" data-index="${i}" data-field="evidence" placeholder="Izvor, link ili referenca...">${esc(r.evidence||'')}</textarea></td></tr>`}).join('')}</tbody></table></div><div class="notice">Za izvještaj su važni statusi i dokazi, ne samo ispunjena tekstualna polja. Povjerljive mrežne konfiguracije, privatne ključeve i lozinke nemoj unositi u browser.</div>`;
+`<div class="toolbar"><div class="left">${vswitch()}<span class="badge">${arr.length} pitanja</span></div><div data-live-discovery style="min-width:280px">${discoveryProgressHtml(vendor)}</div></div>
+<div class="tablewrap"><table><thead><tr><th>#</th><th>Oblast</th><th>Pitanje / ulazni parametar</th><th>Odgovor kupca</th><th>Status</th><th>Dokaz / napomena</th></tr></thead><tbody>${arr.map((row,i)=>{let r=records[i]||{};return `<tr><td><span class="muted">${String(i+1).padStart(2,'0')}</span></td><td><span class="badge">${esc(row.group)}</span><br><small class="muted">${esc(row.priority)}</small></td><td style="min-width:220px"><b>${esc(row.question)}</b><div class="helper">${esc(row.unit)}</div></td><td><textarea data-discovery="${esc(vendor)}" data-index="${i}" data-field="answer" placeholder="Upiši odgovor...">${esc(r.answer||'')}</textarea></td><td><select data-discovery="${esc(vendor)}" data-index="${i}" data-field="status">${['Otvoreno','Potvrđeno','Nije primjenjivo','Blokirano'].map(x=>`<option ${x===(r.status||'Otvoreno')?'selected':''}>${x}</option>`).join('')}</select></td><td><textarea data-discovery="${esc(vendor)}" data-index="${i}" data-field="evidence" placeholder="Izvor, link ili referenca...">${esc(r.evidence||'')}</textarea></td></tr>`}).join('')}</tbody></table></div><div class="notice"><b>Automatski status:</b> Unesen odgovor ≠ verifikovano. „Potvrđeno“ se računa u procenat tek kada postoje i odgovor i dokaz; „Nije primjenjivo“ zahtijeva obrazloženje u polju dokaza. Brojači se osvježavaju tokom unosa. Za izvještaj su važni statusi i dokazi, ne samo ispunjena tekstualna polja. Povjerljive mrežne konfiguracije, privatne ključeve i lozinke nemoj unositi u browser.</div>`;
 }
 function computedSizing(){let z=state.sizing,p=numeric(z.peak),g=numeric(z.growth),h=numeric(z.headroom);
 if(!Number.isFinite(p)||p<=0||!Number.isFinite(g)||g<0||!Number.isFinite(h)||h<0)return null;
@@ -65,7 +110,7 @@ ${snum('users','Number of users','broj','Samo informacija za kontekst.')}
 ${snum('growth','Planned growth','%','Pretpostavka planiranog rasta, promijeni prema kupcu.')}
 ${snum('headroom','Capacity headroom','%','Inženjerska rezerva; nije standard vendora.')}
 </div><div class="grid" style="gap:9px;margin-top:20px">${scheck('tls','Deep TLS inspection aktivna')}${scheck('ips','NGFW / IPS sigurnosne funkcije')}${scheck('ha','High availability potrebna')}</div></div>
-<div class="grid"><div class="card" style="background:#112b3d;color:white;border-color:#112b3d"><div style="font-size:11px;opacity:.8;letter-spacing:1px">INDICATIVE WORKING TARGET</div><div class="numberBig" style="color:#6de6cb;font-size:52px;margin-top:11px">${r?fmt(r.mbps):'—'} <span style="font-size:20px">Mbps</span></div><p style="color:#b8d0d8">Growth & headroom adjusted peak throughput</p><hr style="border:0;border-top:1px solid #34566b;margin:22px 0"><div class="grid cols2"><div><div class="subtle" style="color:#b8d0d8">Gbps target</div><strong style="font-size:20px">${r?fmt(r.gbps):'—'}</strong></div><div><div class="subtle" style="color:#b8d0d8">HA nodes*</div><strong style="font-size:20px">${r?r.ha:'—'}</strong></div></div></div>
+<div class="grid"><div class="card" style="background:#112b3d;color:white;border-color:#112b3d"><div style="font-size:11px;opacity:.8;letter-spacing:1px">INDICATIVE WORKING TARGET</div><div class="numberBig" style="color:#6de6cb;font-size:52px;margin-top:11px"><span data-live-mbps>${r?fmt(r.mbps):'—'}</span> <span style="font-size:20px">Mbps</span></div><p style="color:#b8d0d8">Growth & headroom adjusted peak throughput</p><hr style="border:0;border-top:1px solid #34566b;margin:22px 0"><div class="grid cols2"><div><div class="subtle" style="color:#b8d0d8">Gbps target</div><strong style="font-size:20px" data-live-gbps>${r?fmt(r.gbps):'—'}</strong></div><div><div class="subtle" style="color:#b8d0d8">HA nodes*</div><strong style="font-size:20px" data-live-ha>${r?r.ha:'—'}</strong></div></div></div>
 <div class="card"><h3 style="margin-top:0">Formula</h3><div class="formula">Peak Mbps × (1 + Growth %) × (1 + Headroom %)</div><p class="terms">* Broj uređaja predstavlja isključivo pojednostavljenu active-passive pretpostavku. Potrebno je validirati dizajn, napajanje, failover i podržane HA topologije.</p></div></div></div>
 <div class="notice warning"><b>Presales gate:</b> 975 Mbps izražen kroz ovaj proračun <b>nije</b> isto što i firewall datasheet throughput. Obavezno uporedi <b>Threat Protection / NGFW, IPsec, IPS i TLS inspection</b> mjerne uslove, portove, concurrent sessions i new sessions/sec. Vendor SE odobrava finalni izbor.</div>`;
 }
@@ -88,20 +133,26 @@ return ph('Technology refresh','Legacy uređaj → mogući moderni pravac. Forti
 const types=['Hardware','Software','Security subscription','Support','Implementation'];
 const statuses=['Nije validirano','Vendor SE potvrđeno','Nabavka potvrđena','Kupac odobrio'];
 function bomTotals(){let cost=0,sale=0;let incomplete=false;state.bom.forEach(r=>{let qty=numeric(r.qty),buy=numeric(r.buy),sell=numeric(r.sell);if(!Number.isFinite(qty)||qty<=0||!Number.isFinite(buy)||buy<0||!Number.isFinite(sell)||sell<0||!(r.sku||'').trim())incomplete=true;if(Number.isFinite(qty)&&qty>0){if(Number.isFinite(buy)&&buy>=0)cost+=qty*buy;if(Number.isFinite(sell)&&sell>=0)sale+=qty*sell}});return {cost,sale,margin:sale>0&&!incomplete?(sale-cost)/sale*100:null,incomplete}}
+function bomCards(){
+const t=bomTotals(),c=state.project.currency;
+return `${stat('UKUPNA NABAVNA',money(t.cost,c),'Interne cijene, ako su unesene')}${stat('UKUPNA PRODAJNA',money(t.sale,c),'Bez PDV-a i dodatnih stavki ako nisu unesene')}${stat('INDIKATIVNA MARŽA',t.margin===null?'—':fmt(t.margin)+'%',t.incomplete?'Unesi sve cijene, SKU i količine':'(Prodajno - nabavno) / prodajno')}`;
+}
 function renderBom(){
 const t=bomTotals(),c=state.project.currency;
 return ph('BOM & commercial model','Interni radni Bill of Materials. Kupcu šalji izdvojenu ponudu bez nabavnih cijena i marže.',`<button class="btn accent" data-action="addBom">+ Nova stavka</button><button class="btn" data-action="csvBom">↓ BOM CSV</button>`)+
-`<div class="grid cols3">${stat('UKUPNA NABAVNA',money(t.cost,c),'Samo validirane interne cijene')}${stat('UKUPNA PRODAJNA',money(t.sale,c),'Bez PDV-a i dodatnih stavki ako nisu unesene')}${stat('INDIKATIVNA MARŽA',t.margin===null?'—':fmt(t.margin)+'%',t.incomplete?'Unesi sve cijene, SKU i količine':'(Prodajno - nabavno) / prodajno')}</div>
+`<div class="grid cols3" data-live-bom>${bomCards()}</div>
 <div class="sectiontitle"><h2>Bill of Materials</h2><span class="subtle">${state.bom.length} stavki</span></div>
 <div class="tablewrap"><table><thead><tr><th>#</th><th>Vendor</th><th>SKU / model</th><th>Opis</th><th>Tip</th><th>Qty</th><th>Buy / kom</th><th>Sell / kom</th><th>Prodajno total</th><th>Validacija</th><th></th></tr></thead><tbody>
 ${state.bom.map((r,i)=>{let qty=numeric(r.qty),price=numeric(r.sell),total=Number.isFinite(qty)&&Number.isFinite(price)?qty*price:0;return `<tr><td>${i+1}</td><td><select data-bom="${i}" data-field="vendor">${['Cisco','Fortinet','Other'].map(x=>`<option ${x===r.vendor?'selected':''}>${x}</option>`).join('')}</select></td><td><input class="input" style="min-width:135px" data-bom="${i}" data-field="sku" value="${esc(r.sku)}" placeholder="Exact SKU"></td><td><input class="input" style="min-width:160px" data-bom="${i}" data-field="desc" value="${esc(r.desc)}" placeholder="Hardware, license, support..."></td><td><select data-bom="${i}" data-field="type">${types.map(x=>`<option ${x===r.type?'selected':''}>${x}</option>`).join('')}</select></td><td><input class="input" type="number" min="0" step="1" style="max-width:70px" data-bom="${i}" data-field="qty" value="${esc(r.qty)}"></td><td><input class="input" type="number" min="0" step=".01" style="max-width:120px" data-bom="${i}" data-field="buy" value="${esc(r.buy)}"></td><td><input class="input" type="number" min="0" step=".01" style="max-width:120px" data-bom="${i}" data-field="sell" value="${esc(r.sell)}"></td><td><b>${money(total,c)}</b></td><td><select data-bom="${i}" data-field="status">${statuses.map(x=>`<option ${x===r.status?'selected':''}>${x}</option>`).join('')}</select></td><td><button class="btn warn" data-removebom="${i}">×</button></td></tr>`}).join('')||'<tr><td colspan="11" class="empty">BOM je prazan. Klikni „Nova stavka“ ili učitaj demo podatke.</td></tr>'}</tbody></table></div>
 <div class="notice warning">Sve cijene su korisnički unos; nema aktuelnog distributerskog cjenovnika niti potvrde zaliha. Ova marža ne uključuje poreze, kursne razlike, shipping, rebate i druge troškove ako nisu zasebno uneseni. Nikada ne dijeli interni BOM javno.</div>`;
 }
+function qaCards(q){return `${stat('POTVRĐENO',q.ok,q.total+' kontrolnih tačaka')}${stat('OTVORENO',q.open,'Za dalji rad')}${stat('BLOKIRANO',q.blocked,'Za eskalaciju')}${stat('STATUS',q.ready?'REVIEW':'NOT READY',q.ready?'Potrebno formalno odobrenje':'Nije spremno za izdavanje')}`;}
+function qaNotice(q){return q.ready?'<b>REVIEW:</b> Svi statusi su zatvoreni. Potrebna je ručna tehnička, komercijalna i odgovorna validacija.':'<b>NOT READY:</b> Postoje nezatvorene stavke. Demo alat ne može formalno odobriti vendor, cijene ili ponudu.';}
 function renderQa(){
 let q=qaStatus();
 return ph('Quality & approval gate','Ponuda nije spremna dok otvorene i blokirane stavke nisu razriješene i dokumentovane.',`<button class="btn" data-action="csvQa">↓ QA CSV</button>`)+
-`<div class="grid cols4">${stat('POTVRĐENO',q.ok,q.total+' kontrolnih tačaka')}${stat('OTVORENO',q.open,'Za dalji rad')}${stat('BLOKIRANO',q.blocked,'Za eskalaciju')}${stat('STATUS',q.ready?'REVIEW':'NOT READY',q.ready?'Potrebno formalno odobrenje':'Nije spremno za izdavanje')}</div>
-<div class="notice ${q.ready?'':'danger'}">${q.ready?'<b>REVIEW:</b> Svi statusi su zatvoreni. Potrebna je ručna tehnička, komercijalna i odgovorna validacija.':'<b>NOT READY:</b> Postoje nezatvorene stavke. Demo alat ne može formalno odobriti vendor, cijene ili ponudu.'}</div>
+`<div class="grid cols4" data-live-qa>${qaCards(q)}</div>
+<div class="notice ${q.ready?'':'danger'}" data-live-qa-notice>${qaNotice(q)}</div>
 <div class="tablewrap"><table><thead><tr><th>#</th><th>Oblast</th><th>Gate / dokaz</th><th>Status</th><th>Owner</th><th>Dokaz / komentar</th></tr></thead><tbody>${D.qa.map((r,i)=>{let z=state.qa[i]||{};return `<tr><td>${i+1}</td><td><span class="badge">${esc(r.group)}</span></td><td><b>${esc(r.title)}</b></td><td><select data-qa="${i}" data-field="status">${['Otvoreno','Potvrđeno','Nije primjenjivo','Blokirano'].map(x=>`<option ${x===(z.status||'Otvoreno')?'selected':''}>${x}</option>`).join('')}</select></td><td><input class="input" data-qa="${i}" data-field="owner" value="${esc(z.owner||'')}" placeholder="Odgovorna osoba"></td><td><textarea data-qa="${i}" data-field="evidence" placeholder="Ref. dokumenta, odobrenje...">${esc(z.evidence||'')}</textarea></td></tr>`}).join('')}</tbody></table></div>`;
 }
 function renderGuide(){return ph('How it works','Pripremljeno za demonstraciju na razgovoru: interaktivan workflow, primjeri i jasna kontrola rizika.',actions())+
@@ -160,10 +211,10 @@ case 'print':window.print();break;
 document.addEventListener('input',e=>{
 let t=e.target;if(t.id==='search'){searchTerm=t.value;let pos=t.selectionStart;render();let search=document.getElementById('search');search.focus();search.setSelectionRange(pos,pos);return}
 if(t.dataset.path){setPath(state,t.dataset.path,t.value);save();return}
-if(t.dataset.discovery){let v=t.dataset.discovery,i=t.dataset.index,f=t.dataset.field;state.discovery[v][i]??={};state.discovery[v][i][f]=t.value;save();return}
-if(t.dataset.sizing){state.sizing[t.dataset.sizing]=t.type==='checkbox'?t.checked:t.value;save();return}
-if(t.dataset.bom!==undefined){state.bom[+t.dataset.bom][t.dataset.field]=t.value;save();return}
-if(t.dataset.qa!==undefined){state.qa[t.dataset.qa]??={};state.qa[t.dataset.qa][t.dataset.field]=t.value;save();return}
+if(t.dataset.discovery){let v=t.dataset.discovery,i=t.dataset.index,f=t.dataset.field;state.discovery[v][i]??={};state.discovery[v][i][f]=t.value;save();liveUpdate();return}
+if(t.dataset.sizing){state.sizing[t.dataset.sizing]=t.type==='checkbox'?t.checked:t.value;save();liveUpdate();return}
+if(t.dataset.bom!==undefined){state.bom[+t.dataset.bom][t.dataset.field]=t.value;save();liveUpdate();return}
+if(t.dataset.qa!==undefined){state.qa[t.dataset.qa]??={};state.qa[t.dataset.qa][t.dataset.field]=t.value;save();liveUpdate();return}
 });
 document.addEventListener('change',e=>{
 let t=e.target;

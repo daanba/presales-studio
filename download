@@ -1,0 +1,16 @@
+# ============================================================================
+# Presales Studio | DAMIR OMERASEVIC
+# Purpose: prevent local/customer data and editor state entering public GitHub.
+# ============================================================================
+.DS_Store
+Thumbs.db
+*.local.json
+customer_*.json
+presales_project_*.json
+presales_discovery_*.csv
+presales_bom_*.csv
+presales_qa_*.csv
+.env
+.env.*
+node_modules/
+*.log

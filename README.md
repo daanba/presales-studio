@@ -117,3 +117,28 @@ Službeni vendor URL-ovi su dostupni u aplikaciji: **How it works → Zvanične 
 ## Autorska prava
 
 © 2026 **DAMIR OMERASEVIC**. Sva prava zadržana. Nije dodana open-source licenca. Objavljivanje koda na GitHubu **ne** znači automatski pravo trećim stranama na komercijalnu redistribuciju. Brendovi Comtrade, Cisco i Fortinet su vlasništvo svojih nosilaca.
+
+
+## v1.1 - Live status synchronization (21 October 2026)
+
+The dashboard displays calculated state, not manually set counters. Discovery and QA
+figures now update without requiring a page reload or leaving the active screen.
+
+- **Answered**: non-empty answer.
+- **Confirmed**: a selected `Potvrđeno` status (declared confirmation).
+- **Verified**: `Potvrđeno` + non-empty answer + non-empty evidence, or
+  `Nije primjenjivo` + non-empty justification/evidence.
+- **Completion percentage**: verified records divided by all discovery questions.
+- **QA confirmed**: `Potvrđeno` / `Nije primjenjivo` + non-empty owner + evidence.
+- **QA REVIEW**: all QA items meet documented confirmation criteria; still not
+  a formal approval to submit an offer.
+
+State is stored locally in the same `presales-studio-v1` localStorage key and persists
+across GitHub Pages updates in the same browser/profile/domain. JSON export is recommended
+before upgrades or loading a different demo project.
+
+### Upgrade from GitHub Pages v1.0
+Upload/replace `app.js`, `index.html`, `README.md`, `HOW_TO.md`, and
+`tests/smoke.cjs` on branch `main`. Preserve `.github/workflows/deploy.yml` in the
+`.github/workflows/` directory. Wait for a green Pages workflow run, then hard-refresh
+your browser (Cmd+Shift+R on macOS or Ctrl+Shift+R on Windows).
